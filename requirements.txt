@@ -1,0 +1,6 @@
+streamlit
+qdrant-client
+sentence-transformers
+langchain-huggingface
+groq
+python-dotenv
