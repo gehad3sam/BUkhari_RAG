@@ -6,6 +6,12 @@
 #python-dotenv
 
 #for deploying to streamlit
+#streamlit
+#qdrant-client
+#groq
+#langchain-huggingface
+#cohere
+
 streamlit
 qdrant-client
 groq

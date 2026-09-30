@@ -84,27 +84,42 @@ from sentence_transformers import CrossEncoder
 #     return embeddings, reranker, qdrant, groq
 
 # for deploying the Project on to Hugging Face
+# @st.cache_resource(show_spinner="جاري تحميل نماذج الذكاء الاصطناعي...")
+# def load_ai_models():
+#     # Load directly from HF Hub (Cloud server will cache this instantly)
+#     embeddings = HuggingFaceEmbeddings(
+#         model_name="BAAI/bge-m3",
+#         model_kwargs={'device': 'cpu'},
+#         encode_kwargs={'normalize_embeddings': True}
+#     )
+#
+#     reranker = CrossEncoder(
+#         "BAAI/bge-reranker-v2-m3",
+#         max_length=256,
+#         device='cpu'
+#     )
+#
+#     qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+#     groq = Groq(api_key=GROQ_API_KEY)
+#
+#     return embeddings, reranker, qdrant, groq
+
+
+# for deploying in streamlit
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 @st.cache_resource(show_spinner="جاري تحميل نماذج الذكاء الاصطناعي...")
 def load_ai_models():
-    # Load directly from HF Hub (Cloud server will cache this instantly)
-    embeddings = HuggingFaceEmbeddings(
-        model_name="BAAI/bge-m3",
-        model_kwargs={'device': 'cpu'},
-        encode_kwargs={'normalize_embeddings': True}
+    # --- NEW: Cloud API Embeddings ---
+    embeddings = HuggingFaceEndpointEmbeddings(
+        model="BAAI/bge-m3",
+        task="feature-extraction",
+        huggingfacehub_api_token=os.getenv("HF_TOKEN")
     )
 
-    reranker = CrossEncoder(
-        "BAAI/bge-reranker-v2-m3",
-        max_length=256,
-        device='cpu'
-    )
+    qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
+    groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-    qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-    groq = Groq(api_key=GROQ_API_KEY)
-
-    return embeddings, reranker, qdrant, groq
-
-
+    return embeddings, None, qdrant, groq  # We return None for reranker since we use Cohere directly now
 
 try:
     embedding_model, reranker_model, qdrant_client, llm_client = load_ai_models()
