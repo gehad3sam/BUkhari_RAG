@@ -71,8 +71,8 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 COLLECTION_NAME = "sahih_bukhari"  # Update if you named it differently in Colab
 
 
-from langchain_huggingface import HuggingFaceEmbeddings
-from sentence_transformers import CrossEncoder
+# from langchain_huggingface import HuggingFaceEmbeddings
+# from sentence_transformers import CrossEncoder
 
 # # Define local folder paths
 # BGE_M3_LOCAL_PATH = "./models/bge-m3"
