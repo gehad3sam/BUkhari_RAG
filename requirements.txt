@@ -17,3 +17,4 @@ qdrant-client
 groq
 langchain-huggingface
 cohere
+python-dotenv
