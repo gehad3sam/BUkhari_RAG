@@ -16,14 +16,33 @@ rtl_css = """
     *:not(.material-symbols-rounded):not(.icon):not(svg):not(i) { 
         font-family: 'Tajawal', sans-serif !important; 
     }
+    
+    /* 1. إصلاح القوائم الرقمية (ol) والنقطية (ul) في اللغة العربية */
+    .stMarkdown ol, .stMarkdown ul {
+        direction: rtl !important;
+        text-align: right !important;
+        padding-right: 2.5rem !important; /* لترك مسافة كافية للأرقام من اليمين */
+        padding-left: 0 !important;       /* إلغاء المسافة الافتراضية من اليسار */
+        margin-right: 20px !important;    /* إزاحة خفيفة لتنسيق أفضل */
+        margin-left: 0 !important;
+    }
 
     /* Apply native RTL direction to the main app container */
     .block-container {
         direction: rtl !important;
     }
+    
     /* Explicitly restore Streamlit's UI icons */
     .material-symbols-rounded {
         font-family: 'Material Symbols Rounded' !important;
+    }
+    /* 2. حماية الأيقونات الافتراضية لستريمليت من التلف بسبب الخط العربي */
+    .material-symbols-rounded, 
+    [class*="material-symbols"], 
+    [class*="material-icons"],
+    [data-testid="stExpander"] svg {
+        font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
+        unicode-bidi: normal !important; /* منع تشوه الأيقونات */
     }
 
     /* Ensure all text elements inherit the right alignment */
@@ -173,7 +192,7 @@ if user_query:
                 limit=6
             )
 
-            SIMILARITY_THRESHOLD = 0.40
+            SIMILARITY_THRESHOLD = 0.55
             # candidate_chunks = search_results.points
             candidate_chunks = [point for point in search_results.points if point.score >= SIMILARITY_THRESHOLD]
             if not candidate_chunks:
@@ -239,7 +258,7 @@ if user_query:
                 model="rerank-multilingual-v3.0",
                 query=user_query,
                 documents=docs,
-                top_n=3
+                top_n=5
             )
 
             # 4. Map the winning results back to their full metadata
@@ -260,7 +279,7 @@ if user_query:
                     unique_results.append(chunk)
                     seen_texts.add(chunk['text'])
 
-            top_3_chunks = unique_results[:3]
+            top_3_chunks = unique_results[:5]
 
             # --- STAGE 3: GROQ LLM GENERATION ---
             status_text.info("✍️ جاري صياغة الإجابة...")
