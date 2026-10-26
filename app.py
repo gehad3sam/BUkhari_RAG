@@ -404,7 +404,7 @@ if user_query:
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.4,
-                max_tokens=1024,
+                max_tokens=2048,
                 stream = True
             )
 
