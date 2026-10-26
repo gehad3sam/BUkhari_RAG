@@ -1,20 +1,6 @@
-#streamlit
-#qdrant-client
-#sentence-transformers
-#langchain-huggingface
-#groq
-#python-dotenv
-
-#for deploying to streamlit
-#streamlit
-#qdrant-client
-#groq
-#langchain-huggingface
-#cohere
-
 streamlit
 qdrant-client
 groq
-langchain-huggingface
 cohere
+langchain-cohere
 python-dotenv
