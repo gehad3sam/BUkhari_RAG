@@ -8,55 +8,115 @@ import cohere
 # 1. PAGE CONFIGURATION & RTL STYLING
 # ==========================================
 st.set_page_config(page_title="الباحث في صحيح البخاري", page_icon="🕌", layout="centered")
+# rtl_css = """
+# <style>
+#     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+#
+#     /* Apply font to everything EXCEPT Streamlit's Material Icons */
+#     *:not(.material-symbols-rounded):not(.icon):not(svg):not(i) {
+#         font-family: 'Tajawal', sans-serif !important;
+#     }
+#
+#     /* 1. إصلاح القوائم الرقمية (ol) والنقطية (ul) في اللغة العربية */
+#     .stMarkdown ol, .stMarkdown ul {
+#         direction: rtl !important;
+#         text-align: right !important;
+#         padding-right: 2.5rem !important; /* لترك مسافة كافية للأرقام من اليمين */
+#         padding-left: 0 !important;       /* إلغاء المسافة الافتراضية من اليسار */
+#         margin-right: 20px !important;    /* إزاحة خفيفة لتنسيق أفضل */
+#         margin-left: 0 !important;
+#     }
+#
+#     /* Apply native RTL direction to the main app container */
+#     .block-container {
+#         direction: rtl !important;
+#     }
+#
+#     /* Explicitly restore Streamlit's UI icons */
+#     .material-symbols-rounded {
+#         font-family: 'Material Symbols Rounded' !important;
+#     }
+#     /* 2. حماية الأيقونات الافتراضية لستريمليت من التلف بسبب الخط العربي */
+#     .material-symbols-rounded,
+#     [class*="material-symbols"],
+#     [class*="material-icons"],
+#     [data-testid="stExpander"] svg {
+#         font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
+#         unicode-bidi: normal !important; /* منع تشوه الأيقونات */
+#     }
+#
+#     /* Ensure all text elements inherit the right alignment */
+#     p, div, span, li, h1, h2, h3, h4, h5, h6, textarea, input {
+#         text-align: right !important;
+#     }
+#
+#     /* Keep the chat avatars neat */
+#     div[data-testid="stChatMessage"] {
+#         direction: rtl !important;
+#     }
+# </style>
+# """
+# st.markdown(rtl_css, unsafe_allow_html=True)
 rtl_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
 
-    /* Apply font to everything EXCEPT Streamlit's Material Icons */
-    *:not(.material-symbols-rounded):not(.icon):not(svg):not(i) { 
+    /* 1. Apply font globally BUT safely (Removed the aggressive * selector) */
+    html, body, p, div, h1, h2, h3, h4, h5, h6, li, a, textarea, input, button { 
         font-family: 'Tajawal', sans-serif !important; 
     }
-    
-    /* 1. إصلاح القوائم الرقمية (ol) والنقطية (ul) في اللغة العربية */
-    .stMarkdown ol, .stMarkdown ul {
-        direction: rtl !important;
-        text-align: right !important;
-        padding-right: 2.5rem !important; /* لترك مسافة كافية للأرقام من اليمين */
-        padding-left: 0 !important;       /* إلغاء المسافة الافتراضية من اليسار */
-        margin-right: 20px !important;    /* إزاحة خفيفة لتنسيق أفضل */
-        margin-left: 0 !important;
-    }
 
-    /* Apply native RTL direction to the main app container */
-    .block-container {
-        direction: rtl !important;
-    }
-    
-    /* Explicitly restore Streamlit's UI icons */
-    .material-symbols-rounded {
-        font-family: 'Material Symbols Rounded' !important;
-    }
-    /* 2. حماية الأيقونات الافتراضية لستريمليت من التلف بسبب الخط العربي */
+    /* 2. 🚨 PROTECT MATERIAL ICONS 🚨 */
     .material-symbols-rounded, 
     [class*="material-symbols"], 
     [class*="material-icons"],
-    [data-testid="stExpander"] svg {
+    svg, i {
         font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
-        unicode-bidi: normal !important; /* منع تشوه الأيقونات */
+        unicode-bidi: normal !important;
+        direction: ltr !important; /* Icons must remain LTR to prevent rendering bugs */
     }
 
-    /* Ensure all text elements inherit the right alignment */
+    /* 3. General RTL Alignment */
+    .block-container, div[data-testid="stChatMessage"] {
+        direction: rtl !important;
+    }
+
     p, div, span, li, h1, h2, h3, h4, h5, h6, textarea, input {
         text-align: right !important;
     }
 
-    /* Keep the chat avatars neat */
-    div[data-testid="stChatMessage"] {
+    /* 4. Fix Arabic Lists */
+    .stMarkdown ol, .stMarkdown ul {
         direction: rtl !important;
+        text-align: right !important;
+        padding-right: 2.5rem !important;
+        padding-left: 0 !important;
+        margin-right: 20px !important;
+        margin-left: 0 !important;
+    }
+
+    /* 5. Fix Expander (Accordion) Overlap */
+    details summary {
+        direction: rtl !important;
+        text-align: right !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    details summary > span {
+        margin-left: 10px !important; /* Adds breathing room between the icon and text */
+    }
+    /* Fix the typing cursor (caret) behaving weirdly in the chat input */
+    div[data-testid="stChatInput"] textarea {
+        direction: rtl !important;
+        text-align: right !important;
+        caret-color: auto !important;
     }
 </style>
 """
 st.markdown(rtl_css, unsafe_allow_html=True)
+
+
+
 
 # --- Sidebar: App Info & Tech Stack ---
 with st.sidebar:
@@ -85,7 +145,8 @@ load_dotenv()
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-COLLECTION_NAME = "sahih_bukhari"  # Update if you named it differently in Colab
+# COLLECTION_NAME = "sahih_bukhari"
+COLLECTION_NAME= "sahih_bukhari_with_cohere"# Update if you named it differently in Colab
 
 
 # from langchain_huggingface import HuggingFaceEmbeddings
@@ -142,20 +203,35 @@ COLLECTION_NAME = "sahih_bukhari"  # Update if you named it differently in Colab
 
 
 # for deploying in streamlit
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
+# from langchain_huggingface import HuggingFaceEndpointEmbeddings
+# @st.cache_resource(show_spinner="جاري تحميل نماذج الذكاء الاصطناعي...")
+# def load_ai_models():
+#     # --- NEW: Cloud API Embeddings ---
+#     embeddings = HuggingFaceEndpointEmbeddings(
+#         model="BAAI/bge-m3",
+#         task="feature-extraction",
+#         huggingfacehub_api_token=os.getenv("HF_TOKEN")
+#     )
+#
+#     qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
+#     groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
+#
+#     return embeddings, None, qdrant, groq  # We return None for reranker since we use Cohere directly now
+
+# Remove the Hugging Face import and add Cohere
+from langchain_cohere import CohereEmbeddings
 @st.cache_resource(show_spinner="جاري تحميل نماذج الذكاء الاصطناعي...")
 def load_ai_models():
-    # --- NEW: Cloud API Embeddings ---
-    embeddings = HuggingFaceEndpointEmbeddings(
-        model="BAAI/bge-m3",
-        task="feature-extraction",
-        huggingfacehub_api_token=os.getenv("HF_TOKEN")
+    # --- UPGRADED: Free Cohere Cloud Embeddings ---
+    embeddings = CohereEmbeddings(
+        model="embed-multilingual-v3.0",
+        cohere_api_key=os.getenv("COHERE_API_KEY")
     )
 
     qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
     groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-    return embeddings, None, qdrant, groq  # We return None for reranker since we use Cohere directly now
+    return embeddings, None, qdrant, groq
 
 try:
     embedding_model, reranker_model, qdrant_client, llm_client = load_ai_models()
