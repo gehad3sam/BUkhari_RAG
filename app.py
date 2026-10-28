@@ -1,62 +1,17 @@
 import os
+import re
 import streamlit as st
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
-from groq import Groq
+# # from groq import Groq
+# from openai import OpenAI
+
 import cohere
 # ==========================================
 # 1. PAGE CONFIGURATION & RTL STYLING
 # ==========================================
 st.set_page_config(page_title="الباحث في صحيح البخاري", page_icon="🕌", layout="centered")
-# rtl_css = """
-# <style>
-#     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
-#
-#     /* Apply font to everything EXCEPT Streamlit's Material Icons */
-#     *:not(.material-symbols-rounded):not(.icon):not(svg):not(i) {
-#         font-family: 'Tajawal', sans-serif !important;
-#     }
-#
-#     /* 1. إصلاح القوائم الرقمية (ol) والنقطية (ul) في اللغة العربية */
-#     .stMarkdown ol, .stMarkdown ul {
-#         direction: rtl !important;
-#         text-align: right !important;
-#         padding-right: 2.5rem !important; /* لترك مسافة كافية للأرقام من اليمين */
-#         padding-left: 0 !important;       /* إلغاء المسافة الافتراضية من اليسار */
-#         margin-right: 20px !important;    /* إزاحة خفيفة لتنسيق أفضل */
-#         margin-left: 0 !important;
-#     }
-#
-#     /* Apply native RTL direction to the main app container */
-#     .block-container {
-#         direction: rtl !important;
-#     }
-#
-#     /* Explicitly restore Streamlit's UI icons */
-#     .material-symbols-rounded {
-#         font-family: 'Material Symbols Rounded' !important;
-#     }
-#     /* 2. حماية الأيقونات الافتراضية لستريمليت من التلف بسبب الخط العربي */
-#     .material-symbols-rounded,
-#     [class*="material-symbols"],
-#     [class*="material-icons"],
-#     [data-testid="stExpander"] svg {
-#         font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
-#         unicode-bidi: normal !important; /* منع تشوه الأيقونات */
-#     }
-#
-#     /* Ensure all text elements inherit the right alignment */
-#     p, div, span, li, h1, h2, h3, h4, h5, h6, textarea, input {
-#         text-align: right !important;
-#     }
-#
-#     /* Keep the chat avatars neat */
-#     div[data-testid="stChatMessage"] {
-#         direction: rtl !important;
-#     }
-# </style>
-# """
-# st.markdown(rtl_css, unsafe_allow_html=True)
+
 rtl_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
@@ -111,6 +66,18 @@ rtl_css = """
         text-align: right !important;
         caret-color: auto !important;
     }
+    
+    /* 6. إصلاح اتجاه الجداول (Markdown Tables) لتكون من اليمين لليسار بالكامل */
+    .stMarkdown table, table {
+        direction: rtl !important;
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    .stMarkdown th, .stMarkdown td, th, td {
+        direction: rtl !important;
+        text-align: right !important;
+        padding: 8px 12px !important;
+    }
 </style>
 """
 st.markdown(rtl_css, unsafe_allow_html=True)
@@ -149,77 +116,15 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 COLLECTION_NAME= "sahih_bukhari_with_cohere"# Update if you named it differently in Colab
 
 
-# from langchain_huggingface import HuggingFaceEmbeddings
-# from sentence_transformers import CrossEncoder
-
-# # Define local folder paths
-# BGE_M3_LOCAL_PATH = "./models/bge-m3"
-# RERANKER_LOCAL_PATH = "./models/bge-reranker"
-# @st.cache_resource(show_spinner="جاري تحميل النماذج من القرص المحلي...")
-# def load_ai_models():
-#     # Pass the local path instead of "BAAI/bge-m3"
-#     embeddings = HuggingFaceEmbeddings(
-#         model_name=BGE_M3_LOCAL_PATH,
-#         model_kwargs={
-#             'device': 'cpu',
-#             'local_files_only': True  # Strictly prevents online requests
-#         },
-#         encode_kwargs={'normalize_embeddings': True}
-#     )
-#
-#     # Pass the local path instead of "BAAI/bge-reranker-v2-m3"
-#     reranker = CrossEncoder(
-#         RERANKER_LOCAL_PATH,
-#         max_length=256,
-#         device='cpu',
-#         automodel_args={'local_files_only': True}  # Strictly prevents online requests
-#     )
-#
-#     qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-#     groq = Groq(api_key=GROQ_API_KEY)
-#
-#     return embeddings, reranker, qdrant, groq
-
-# for deploying the Project on to Hugging Face
-# @st.cache_resource(show_spinner="جاري تحميل نماذج الذكاء الاصطناعي...")
-# def load_ai_models():
-#     # Load directly from HF Hub (Cloud server will cache this instantly)
-#     embeddings = HuggingFaceEmbeddings(
-#         model_name="BAAI/bge-m3",
-#         model_kwargs={'device': 'cpu'},
-#         encode_kwargs={'normalize_embeddings': True}
-#     )
-#
-#     reranker = CrossEncoder(
-#         "BAAI/bge-reranker-v2-m3",
-#         max_length=256,
-#         device='cpu'
-#     )
-#
-#     qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-#     groq = Groq(api_key=GROQ_API_KEY)
-#
-#     return embeddings, reranker, qdrant, groq
-
-
-# for deploying in streamlit
-# from langchain_huggingface import HuggingFaceEndpointEmbeddings
-# @st.cache_resource(show_spinner="جاري تحميل نماذج الذكاء الاصطناعي...")
-# def load_ai_models():
-#     # --- NEW: Cloud API Embeddings ---
-#     embeddings = HuggingFaceEndpointEmbeddings(
-#         model="BAAI/bge-m3",
-#         task="feature-extraction",
-#         huggingfacehub_api_token=os.getenv("HF_TOKEN")
-#     )
-#
-#     qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
-#     groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
-#
-#     return embeddings, None, qdrant, groq  # We return None for reranker since we use Cohere directly now
-
 # Remove the Hugging Face import and add Cohere
+
+
+from google import genai
+from google.genai import types
 from langchain_cohere import CohereEmbeddings
+
+# 1. تعريف العميل في البداية:
+
 @st.cache_resource(show_spinner="جاري تحميل نماذج الذكاء الاصطناعي...")
 def load_ai_models():
     # --- UPGRADED: Free Cohere Cloud Embeddings ---
@@ -229,12 +134,20 @@ def load_ai_models():
     )
 
     qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
-    groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    # groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    cohere_client = cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY"))
+    # بدلاً من عميل Groq:
+    # llm_client = OpenAI(
+    #     api_key=os.getenv("GEMINI_API_KEY"),
+    #     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    # )
 
-    return embeddings, None, qdrant, groq
+    gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+    return embeddings, cohere_client, qdrant, gemini_client
 
 try:
-    embedding_model, reranker_model, qdrant_client, llm_client = load_ai_models()
+    embedding_model, cohere_client, qdrant_client, llm_client = load_ai_models()
 except Exception as e:
     st.error("⚠️ خطأ في تحميل النماذج. تأكد من صحة مفاتيح API في ملف .env")
     st.stop()
@@ -262,7 +175,7 @@ for msg in st.session_state.messages:
 # ==========================================
 # 4. MAIN RAG PIPELINE & CHAT LOGIC
 # ==========================================
-user_query = st.chat_input("اكتب سؤالك هنا... (مثال: من يدخل الجنة؟)")
+user_query = st.chat_input("اكتب سؤالك هنا... (مثال: ماهي السبع الموبقات؟)")
 
 if user_query:
     # 1. Show user message
@@ -275,18 +188,53 @@ if user_query:
         status_text = st.empty()  # Placeholder for live status updates
 
         try:
+
+            GREETINGS_PATTERN = r"^(أهلا|مرحبا|سلام|السلام عليكم|كيف حالك|عامل ايه|صباح الخير|مساء الخير)"
+            if re.search(GREETINGS_PATTERN, user_query.strip(), re.IGNORECASE) and len(user_query.split()) <= 4:
+                bot_reply = "أهلاً بك! 👋 أنا الباحث الذكي في صحيح البخاري. كيف يمكنني مساعدتك اليوم؟"
+                with st.chat_message("assistant", avatar="🕌"):
+                    st.write(bot_reply)
+                st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                st.stop()
+
             # --- STAGE 1: DENSE RETRIEVAL ---
             status_text.info("⏳ جاري البحث المبدئي في قاعدة البيانات...")
+
+            # rewrite_prompt = (
+            #     f"أعد صياغة السؤال التالي (مهما كانت لهجته أو أسلوبه) إلى جملة بحث فصيحة "
+            #     f"تضم أدق المصطلحات النبوية المقابلة له في صحيح البخاري:\n"
+            #     f"السؤال: '{user_query}'\n"
+            #     f"صياغة البحث في البخاري (سطر واحد فقط بدون مقدمات):"
+            # )
+            # try:
+            #     rewrite_res = llm_client.models.generate_content(
+            #         model="gemini-3.5-flash-lite",
+            #         contents=rewrite_prompt,
+            #         config=types.GenerateContentConfig(
+            #             temperature=0.0,
+            #             max_output_tokens=50  # تقييد صارم يجعل التوليد ينتهي في أقل من 200ms
+            #         )
+            #     )
+            #     search_query = rewrite_res.text.strip().replace("\n", " ")
+            # except Exception:
+            #     search_query = user_query
+            # ------------------------
+
+
+            # search_query = f"{user_query} {expanded_keywords}".strip()
+            # ------------------------
+
             query_vector = embedding_model.embed_query(user_query)
 
             search_results = qdrant_client.query_points(
                 collection_name=COLLECTION_NAME,
                 query=query_vector,
-                limit=6
+                limit=15
             )
 
-            SIMILARITY_THRESHOLD = 0.55
+            SIMILARITY_THRESHOLD = 0.45
             # candidate_chunks = search_results.points
+
             candidate_chunks = [point for point in search_results.points if point.score >= SIMILARITY_THRESHOLD]
             if not candidate_chunks:
                 status_text.empty()  # Clear loading text
@@ -302,34 +250,6 @@ if user_query:
                 st.stop()  # 🛑 Completely halts the script here (Reranker & LLM are skipped)
 
 
-
-            # --- STAGE 2: RERANKING ---
-            # status_text.info("🎯 جاري الفرز الدقيق للأحاديث (Reranker)...")
-            # pairs = [[user_query, point.payload['original_text']] for point in candidate_chunks]
-            # rerank_scores = reranker_model.predict(pairs)
-            #
-            # reranked_results = []
-            # for score, point in zip(rerank_scores, candidate_chunks):
-            #     reranked_results.append({
-            #         "score": float(score),
-            #         "hadith_number": point.payload['hadith_number'],
-            #         "book_title": point.payload['book_title'],
-            #         "text": point.payload['original_text']
-            #     })
-            #
-            # reranked_results.sort(key=lambda x: x["score"], reverse=True)
-            #
-            # unique_results = []
-            # seen_texts = set()
-            # for chunk in reranked_results:
-            #     if chunk['text'] not in seen_texts:
-            #         unique_results.append(chunk)
-            #         seen_texts.add(chunk['text'])
-            #
-            # top_3_chunks = unique_results[:3]
-
-             # Add this to the top of your file
-
             # --- STAGE 2: RERANKING (Using Cohere API) ---
             status_text.info("🎯 جاري الفرز الدقيق للأحاديث (Cohere)...")
 
@@ -343,42 +263,60 @@ if user_query:
                     seen_texts.add(text)
 
             # 2. Extract just the text strings for Cohere
-            docs = [point.payload['original_text'] for point in unique_candidates]
-
+            # docs = [point.payload['original_text'] for point in unique_candidates]
+            docs = [
+                f"كتاب: {point.payload['book_title']} | {point.payload['original_text']}"
+                for point in unique_candidates
+            ]
             # 3. Call the Multilingual Reranker
-            co = cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY"))
-            response = co.rerank(
+            # co = cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY"))
+            response = cohere_client.rerank(
                 model="rerank-multilingual-v3.0",
                 query=user_query,
                 documents=docs,
-                top_n=5
+                top_n=min(7,len(docs))
             )
 
-            # 4. Map the winning results back to their full metadata
-            top_3_chunks = []
+            top_chunks = []
             for result in response.results:
-                original_point = unique_candidates[result.index]  # Match index from Cohere response
-                top_3_chunks.append({
-                    "score": result.relevance_score,  # Optional: save the score
-                    "hadith_number": original_point.payload['hadith_number'],
-                    "book_title": original_point.payload['book_title'],
-                    "text": original_point.payload['original_text']
-                })
-            #
-            unique_results = []
-            seen_texts = set()
-            for chunk in top_3_chunks:
-                if chunk['text'] not in seen_texts:
-                    unique_results.append(chunk)
-                    seen_texts.add(chunk['text'])
+                if result.relevance_score >= 0.15 or len(top_chunks)<3:
+                    original_point = unique_candidates[result.index]
+                    top_chunks.append({
+                        "score": result.relevance_score,
+                        "hadith_number": original_point.payload['hadith_number'],
+                        "book_title": original_point.payload['book_title'],
+                        "text": original_point.payload['original_text']
+                    })
 
-            top_3_chunks = unique_results[:5]
-
-            # --- STAGE 3: GROQ LLM GENERATION ---
+            # --- STAGE 3: GROQ GENERATION ---
             status_text.info("✍️ جاري صياغة الإجابة...")
 
+            # 4. Map the winning results back to their full metadata
+            # top_chunks = []
+            # for result in response.results:
+            #     original_point = unique_candidates[result.index]  # Match index from Cohere response
+            #     top_chunks.append({
+            #         "score": result.relevance_score,  # Optional: save the score
+            #         "hadith_number": original_point.payload['hadith_number'],
+            #         "book_title": original_point.payload['book_title'],
+            #         "text": original_point.payload['original_text']
+            #     })
+            # #
+            # # unique_results = []
+            # # seen_texts = set()
+            # # for chunk in top_chunks:
+            # #     if chunk['text'] not in seen_texts:
+            # #         unique_results.append(chunk)
+            # #         seen_texts.add(chunk['text'])
+            #
+            # top_chunks = unique_results[:10]
+
+
+            # --- STAGE 3: GROQ LLM GENERATION ---
+            # status_text.info("✍️ جاري صياغة الإجابة...")
+
             context_blocks = []
-            for i, chunk in enumerate(top_3_chunks, 1):
+            for i, chunk in enumerate(top_chunks, 1):
                 context_blocks.append(
                     f"--- Context {i} ---\n"
                     f"Book: {chunk['book_title']}\n"
@@ -388,41 +326,124 @@ if user_query:
             context_str = "\n".join(context_blocks)
 
             system_prompt = (
-                "أنت مساعد خبير ومحترم متخصص في صحيح البخاري. "
-                "أجب على سؤال المستخدم بشكل صارم باستخدام نصوص الأحاديث الواردة في السياق أدناه فقط. "
-                "يجب عليك دائماً ذكر رقم الحديث واسم الكتاب في إجابتك. "
-                "إذا لم تجد الإجابة في السياق المرفق، فاذكر بوضوح أن المعلومات غير متوفرة في الأحاديث المتاحة ولا تألف من عندك."
+                "أنت باحث ومحقق علمي خبير في السنة النبوية والسيرة، متخصص في كتاب «التجريد الصريح لأحاديث الجامع الصحيح» (مختصر صحيح البخاري للإمام الزبيدي).\n"
+                "مهمتك الإجابة عن سؤال المستخدم بدقة علمية وتاريخية صارمة، بالاعتماد **حصرياً** على نصوص الأحاديث المرفقة في السياق أدناه دون أي إضافة خارجية.\n\n"
+
+                "⚖️ الضوابط الشرعية والمنهجية الصارمة:\n"
+                "1. صون مقام النبوة والصحابة وأمهات المؤمنين:\n"
+                "   - التزم الأدب الرفيع عند ذكر النبي ﷺ (صلى الله عليه وسلم) والصحابة وأمهات المؤمنين (رضي الله عنهم).\n"
+                "   - إياك أن تنسب إلى صحابي أو أم مؤمنين تهمة أو فعلاً شنيعاً (كالخوض في الإفك، أو الاستسلام، أو الردة) بسبب سوء فهم الضمائر أو تجاور الأسماء في النص.\n"
+                "   - عند إسناد الأفعال إلى الله تعالى في النص (مثل: «فقتله الله ببدر»)، التزم بلفظ النص أو وضّح أنه قُتل في المعركة بتقدير الله على أيدي المؤمنين، ولا تقل «وقع القتل بيد الله».\n\n"
+
+                "🧠 بروتوكول التحليل النحوي والتفكيكي (يُطبق ذهنياً بصمت قبل الصياغة):\n"
+                "2. ضبط الضمائر والفاعل والمفعول (Pronoun & Syntax Resolution):\n"
+                "   - حلّل الجمل العربية نحوياً بدقة قبل التلخيص: حدّد على من يعود كل ضمير متصل أو مستتر (مثل: «فهزموهم»، «فأقبلوا»، «قالا مثل ما قلت»).\n"
+                "   - ميّز بين النداء والتحذير وبين أسماء الأعلام والقبائل (مثال: «الغنيمةَ أي قوم» هو نداء لجمع الغنائم وليس اسم قبيلة!).\n"
+                "   - انتبه لعطف البيان والبدل والكنى (مثال: «أم مسطح بنت أبي رهم» هي امرأة واحدة وليست شخصيتين).\n\n"
+
+                "3. التفكيك الدلالي للأدوار والفلترة الصامتة (Silent Entity-Role Filtering):\n"
+                "   - عند السؤال عن فاعل حدث معين (مثل: من خاض، من تخلف، من قَتل)، اذكر في إجابتك **فقط** الشخصيات التي مارست هذا الفعل صراحة.\n"
+                "   - افصل ذهنياً وبصمت بين (الفاعل المباشر) وبين غيره (كالراوي، أو المعتدى عليه، أو المستشار، أو الشاهد)، **ويُمنع منعاً باتاً إدراج غير الفاعلين في الإجابة أو الجدول، كما يُمنع ذكر أسمائهم لتبرير سبب استبعادهم أو شرح أدوارهم التي لم يسأل عنها المستخدم** (فمثلاً عند السؤال عمن خاض في الإفك: لا تذكر عائشة ولا النبي ﷺ ولا علياً ولا أسامة إطلاقاً، ولا تكتب ملاحظة تشرح لماذا لم تدرجهم).\n\n"
+
+                "4. التفكيك الزمني والمكاني للأحداث (Event Boundary Disambiguation):\n"
+                "   - إذا ذكر الحديث حدثين (مثل: غزوة تبوك وغزوة بدر في حديث كعب بن مالك، أو غزوة أحد وغزوة بدر في حديث البراء)، فاربط كل حكم وكل شخصية بالحدث الخاص بها بدقة.\n"
+                "   - لا تسحب حكم حدث على آخر، ولا تذكر شخصيات الحدث الآخر لتبرير استبعادها (اذكر فقط من ينطبق عليه سؤال المستخدم مباشرة).\n\n"
+
+                "5. التقييد الصارم بالنص والتوثيق المزدوج (Strict Grounding & Citation):\n"
+                "   - لا تستنتج أي معلومة أو عدد أو اسم غير مذكور صراحة في السياق المرفق.\n"
+                "   - إذا تضمن نص الحديث إشارة من الإمام الزبيدي لاختصار القصة (مثل: «تقدم»، أو «وفي الحديث قصة هذا مضمون الحديث منها»)، فنبه المستخدم بأمانة أن القصة مختصرة في هذا الموضع.\n"
+                "   - وثّق كل معلومة بذكر: (اسم الكتاب)، و(رقم الحديث في المختصر)، و(رقم البخاري الأصلي المذكور بين قوسين في نهاية الحديث).\n\n"
+
+                "6. قاعدة التعامل مع غياب الجواب (Zero-Result Rule):\n"
+                "   - إذا كانت الأحاديث المرفقة في السياق لا تحتوي على إجابة للسؤال المطروح، **لا تنشئ جدولاً لأحاديث غير ذات صلة**، بل اعتذر بوضوح في سطرين قائلاً: «لا توجد في النصوص المسترجعة من مختصر صحيح البخاري إجابة صريحة عن هذا السؤال»، واذكر فقط إن كانت هناك إشارة عابرة ذات صلة.\n\n"
+
+                "📊 قواعد التنسيق والاقتصاد في الكلمات (مهم جداً):\n"
+                "7. الإجابة الصافية والمباشرة:\n"
+                "   - قدّم الإجابة الصحيحة فقط؛ لا تذكر الاحتمالات الخاطئة، ولا تشرح لماذا استبعدت شخصيات أو أحاديث أخرى غير مطابقة للسؤال، ولا تكتب قوائم بالأحاديث المستبعدة.\n"
+                "   - كن موجزاً ومباشراً ومركّزاً دون إطالة أو تكرار.\n"
+                "   - **لا تستخدم الجداول (Markdown Tables) بشكل مفرط:** استخدم السرد النقطي المنظم (Bullet Points) مع العناوين الفرعية الواضحة كأصل عام للإجابة، ولا تستخدم الجدول إلا إذا كان السؤال يطلب مقارنة مباشرة بين عدة شخصيات أو أحداث متقابلة (بحد أقصى جدول واحد مختصر يضم المطلوب فقط).\n"
+                "   - يُمنع استخدام أي وسوم HTML مثل <br> نهائياً."
             )
 
-            user_prompt = f"السؤال: {user_query}\n\nالأحاديث المسترجعة (السياق):\n{context_str}\n\nيرجى تقديم إجابة دقيقة:"
 
-            # Using the new 120B model as recommended by Groq
-            stream = llm_client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.4,
-                max_tokens=2048,
-                stream = True
+
+            # user_prompt = f"السؤال: {user_query}\n\nالأحاديث المسترجعة (السياق):\n{context_str}\n\nيرجى تقديم إجابة دقيقة:"
+            #
+            # # Using the new 120B model as recommended by Groq
+            # stream = llm_client.chat.completions.create(
+            #     # model="openai/gpt-oss-120b",
+            #     # model = "llama-3.3-70b-versatile",
+            #     # model = "qwen/qwen3.8-27b",
+            #     model = "gemini-2.0-flash",
+            #     messages=[
+            #         {"role": "system", "content": system_prompt},
+            #         {"role": "user", "content": user_prompt}
+            #     ],
+            #     temperature=0.00,
+            #     max_tokens=2048,
+            #     # frequency_penalty=0.0,  # Prevents repetitive loops
+            #     # presence_penalty=0.0,
+            #     stream = True
+            # )
+            #
+            # status_text.empty()
+            #
+            #
+            # # def parse_and_clean_stream(stream_obj):
+            # #     for chunk in stream_obj:
+            # #         content = chunk.choices[0].delta.content
+            # #         if content is not None:
+            # #             # Clean out lingering HTML line breaks
+            # #             cleaned = content.replace("<br>", " ").replace("<br/>", " ")
+            # #             yield cleaned
+            #
+            #
+            # def parse_and_clean_stream(stream_obj):
+            #     buffer = ""
+            #     for chunk in stream_obj:
+            #         content = chunk.choices[0].delta.content
+            #         if content is not None:
+            #             buffer += content
+            #             # إذا كان آخر البافر بداية وسم < لم يكتمل بعد، ننتظر الـ chunk القادم
+            #             if "<" in buffer and ">" not in buffer[buffer.rfind("<"):]:
+            #                 continue
+            #             # إزالة كافة أشكال وسوم <br>
+            #             cleaned = re.sub(r'</?br\s*/?>', ' - ', buffer, flags=re.IGNORECASE)
+            #             buffer = ""
+            #             yield cleaned
+            #     if buffer:
+            #         yield re.sub(r'</?br\s*/?>', ' - ', buffer, flags=re.IGNORECASE)
+
+            # final_answer = st.write_stream(parse_and_clean_stream(stream))
+
+            # 2. في مكان التوليد (بدلاً من llm_client.chat.completions.create):
+            full_prompt = f"السؤال: {user_query}\n\nالأحاديث المسترجعة (السياق):\n{context_str}\n\nيرجى تقديم إجابة دقيقة:"
+
+            response_stream = llm_client.models.generate_content_stream(
+                model="gemini-3.5-flash-lite",  # أو gemini-2.5-flash
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.0,
+                    max_output_tokens=2048,
+                    system_instruction=system_prompt
+                )
             )
 
-            status_text.empty()
-            def parse_groq_stream(stream_obj):
-                for chunk in stream_obj:
-                    if chunk.choices[0].delta.content is not None:
-                        yield chunk.choices[0].delta.content
 
-            # final_answer = response.choices[0].message.content
-            final_answer = st.write_stream(parse_groq_stream(stream))
-            # --- STAGE 4: RENDER FINAL OUTPUT ---
-            # status_text.empty()  # Clear the loading status
-            # st.write(final_answer)  # Print LLM response
+            def stream_gemini(response):
+                first_chunk = True
+                for chunk in response:
+                    if chunk.text:
+                        if first_chunk:
+                            status_text.empty()  # إخفاء "جاري صياغة الإجابة..." فور بدء الكتابة!
+                            first_chunk = False
+                        yield chunk.text
+
+            final_answer = st.write_stream(stream_gemini(response_stream))
 
             # Render the source expander
-            with st.expander("الأحاديث التي تم الاعتماد عليها (اضغط للتوسيع)"):
-                for source in top_3_chunks:
+            with st.expander("الأحاديث التي تم الاعتماد عليها (اضغط للتوسيع)📚"):
+                for source in top_chunks:
                     st.markdown(
                         f"**الكتاب:** {source['book_title']} | **حديث رقم:** {source['hadith_number']}\n\n{source['text']}")
                     st.divider()
@@ -431,7 +452,7 @@ if user_query:
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": final_answer,
-                "sources": top_3_chunks
+                "sources": top_chunks
             })
 
         except Exception as e:
