@@ -134,14 +134,7 @@ def load_ai_models():
     )
 
     qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
-    # groq = Groq(api_key=os.getenv("GROQ_API_KEY"))
     cohere_client = cohere.ClientV2(api_key=os.getenv("COHERE_API_KEY"))
-    # بدلاً من عميل Groq:
-    # llm_client = OpenAI(
-    #     api_key=os.getenv("GEMINI_API_KEY"),
-    #     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-    # )
-
     gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     return embeddings, cohere_client, qdrant, gemini_client
@@ -200,29 +193,6 @@ if user_query:
             # --- STAGE 1: DENSE RETRIEVAL ---
             status_text.info("⏳ جاري البحث المبدئي في قاعدة البيانات...")
 
-            # rewrite_prompt = (
-            #     f"أعد صياغة السؤال التالي (مهما كانت لهجته أو أسلوبه) إلى جملة بحث فصيحة "
-            #     f"تضم أدق المصطلحات النبوية المقابلة له في صحيح البخاري:\n"
-            #     f"السؤال: '{user_query}'\n"
-            #     f"صياغة البحث في البخاري (سطر واحد فقط بدون مقدمات):"
-            # )
-            # try:
-            #     rewrite_res = llm_client.models.generate_content(
-            #         model="gemini-3.5-flash-lite",
-            #         contents=rewrite_prompt,
-            #         config=types.GenerateContentConfig(
-            #             temperature=0.0,
-            #             max_output_tokens=50  # تقييد صارم يجعل التوليد ينتهي في أقل من 200ms
-            #         )
-            #     )
-            #     search_query = rewrite_res.text.strip().replace("\n", " ")
-            # except Exception:
-            #     search_query = user_query
-            # ------------------------
-
-
-            # search_query = f"{user_query} {expanded_keywords}".strip()
-            # ------------------------
 
             query_vector = embedding_model.embed_query(user_query)
 
@@ -232,7 +202,7 @@ if user_query:
                 limit=15
             )
 
-            SIMILARITY_THRESHOLD = 0.45
+            SIMILARITY_THRESHOLD = 0.42
             # candidate_chunks = search_results.points
 
             candidate_chunks = [point for point in search_results.points if point.score >= SIMILARITY_THRESHOLD]
@@ -279,7 +249,7 @@ if user_query:
 
             top_chunks = []
             for result in response.results:
-                if result.relevance_score >= 0.15 or len(top_chunks)<3:
+                if result.relevance_score >= 0.05 or len(top_chunks)<3:
                     original_point = unique_candidates[result.index]
                     top_chunks.append({
                         "score": result.relevance_score,
@@ -291,29 +261,6 @@ if user_query:
             # --- STAGE 3: GROQ GENERATION ---
             status_text.info("✍️ جاري صياغة الإجابة...")
 
-            # 4. Map the winning results back to their full metadata
-            # top_chunks = []
-            # for result in response.results:
-            #     original_point = unique_candidates[result.index]  # Match index from Cohere response
-            #     top_chunks.append({
-            #         "score": result.relevance_score,  # Optional: save the score
-            #         "hadith_number": original_point.payload['hadith_number'],
-            #         "book_title": original_point.payload['book_title'],
-            #         "text": original_point.payload['original_text']
-            #     })
-            # #
-            # # unique_results = []
-            # # seen_texts = set()
-            # # for chunk in top_chunks:
-            # #     if chunk['text'] not in seen_texts:
-            # #         unique_results.append(chunk)
-            # #         seen_texts.add(chunk['text'])
-            #
-            # top_chunks = unique_results[:10]
-
-
-            # --- STAGE 3: GROQ LLM GENERATION ---
-            # status_text.info("✍️ جاري صياغة الإجابة...")
 
             context_blocks = []
             for i, chunk in enumerate(top_chunks, 1):
@@ -326,7 +273,8 @@ if user_query:
             context_str = "\n".join(context_blocks)
 
             system_prompt = (
-                "أنت باحث ومحقق علمي خبير في السنة النبوية والسيرة، متخصص في كتاب «التجريد الصريح لأحاديث الجامع الصحيح» (مختصر صحيح البخاري للإمام الزبيدي).\n"
+                "، أنت باحث ومحقق علمي خبير في السنة النبوية والسيرة، متخصص في كتاب «التجريد الصريح لأحاديث الجامع الصحيح» (مختصر صحيح البخاري للإمام الزبيدي).\n"
+                "إذا أردت الإشارة وذكر الكتاب فقل هذا الاسم: مختصر صحيح البخاري للإمام الزبيدي واذكر اسم الكتاب كاملا في وقت الحاجة أو السؤال عنه فقط "
                 "مهمتك الإجابة عن سؤال المستخدم بدقة علمية وتاريخية صارمة، بالاعتماد **حصرياً** على نصوص الأحاديث المرفقة في السياق أدناه دون أي إضافة خارجية.\n\n"
 
                 "⚖️ الضوابط الشرعية والمنهجية الصارمة:\n"
@@ -367,56 +315,6 @@ if user_query:
 
 
 
-            # user_prompt = f"السؤال: {user_query}\n\nالأحاديث المسترجعة (السياق):\n{context_str}\n\nيرجى تقديم إجابة دقيقة:"
-            #
-            # # Using the new 120B model as recommended by Groq
-            # stream = llm_client.chat.completions.create(
-            #     # model="openai/gpt-oss-120b",
-            #     # model = "llama-3.3-70b-versatile",
-            #     # model = "qwen/qwen3.8-27b",
-            #     model = "gemini-2.0-flash",
-            #     messages=[
-            #         {"role": "system", "content": system_prompt},
-            #         {"role": "user", "content": user_prompt}
-            #     ],
-            #     temperature=0.00,
-            #     max_tokens=2048,
-            #     # frequency_penalty=0.0,  # Prevents repetitive loops
-            #     # presence_penalty=0.0,
-            #     stream = True
-            # )
-            #
-            # status_text.empty()
-            #
-            #
-            # # def parse_and_clean_stream(stream_obj):
-            # #     for chunk in stream_obj:
-            # #         content = chunk.choices[0].delta.content
-            # #         if content is not None:
-            # #             # Clean out lingering HTML line breaks
-            # #             cleaned = content.replace("<br>", " ").replace("<br/>", " ")
-            # #             yield cleaned
-            #
-            #
-            # def parse_and_clean_stream(stream_obj):
-            #     buffer = ""
-            #     for chunk in stream_obj:
-            #         content = chunk.choices[0].delta.content
-            #         if content is not None:
-            #             buffer += content
-            #             # إذا كان آخر البافر بداية وسم < لم يكتمل بعد، ننتظر الـ chunk القادم
-            #             if "<" in buffer and ">" not in buffer[buffer.rfind("<"):]:
-            #                 continue
-            #             # إزالة كافة أشكال وسوم <br>
-            #             cleaned = re.sub(r'</?br\s*/?>', ' - ', buffer, flags=re.IGNORECASE)
-            #             buffer = ""
-            #             yield cleaned
-            #     if buffer:
-            #         yield re.sub(r'</?br\s*/?>', ' - ', buffer, flags=re.IGNORECASE)
-
-            # final_answer = st.write_stream(parse_and_clean_stream(stream))
-
-            # 2. في مكان التوليد (بدلاً من llm_client.chat.completions.create):
             full_prompt = f"السؤال: {user_query}\n\nالأحاديث المسترجعة (السياق):\n{context_str}\n\nيرجى تقديم إجابة دقيقة:"
 
             response_stream = llm_client.models.generate_content_stream(
@@ -425,7 +323,11 @@ if user_query:
                 config=types.GenerateContentConfig(
                     temperature=0.0,
                     max_output_tokens=2048,
-                    system_instruction=system_prompt
+                    system_instruction=system_prompt,
+                    thinking_config=types.ThinkingConfig(
+                        # Replaces thinking_budget=0 for newer models
+                        thinking_level=types.ThinkingLevel.MINIMAL
+                    )
                 )
             )
 
