@@ -142,8 +142,6 @@ rtl_css = """
 st.markdown(rtl_css, unsafe_allow_html=True)
 
 
-
-
 # --- Sidebar: App Info & Tech Stack ---
 with st.sidebar:
     st.title("عن التطبيق ℹ️")
@@ -205,10 +203,55 @@ except Exception as e:
     st.error("⚠️ خطأ في تحميل النماذج. تأكد من صحة مفاتيح API في ملف .env")
     st.stop()
 
+
+# ==========================================
+# 3. SESSION STATE & QUICK-START QUESTIONS
+# ==========================================
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "pending_query" not in st.session_state:
+    st.session_state.pending_query = None
+
+
+def set_example_query(q_text: str):
+    """Callback that captures the clicked example BEFORE Streamlit reruns the script."""
+    st.session_state.pending_query = q_text
+
+
+# Showcase questions verified for 100% retrieval & generation accuracy
+EXAMPLE_QUESTIONS = [
+    "ما هي السبع الموبقات؟",
+    "من هم السبعة الذين يظلهم الله في ظله؟",
+    "ما هي علامات المنافق وخصاله؟",
+    "من الذين خاضوا في حادثة الإفك وتولوا كبره؟",
+]
+
+# Render quick-start buttons ALWAYS at the top so visitors can test multiple questions seamlessly
+st.markdown("##### 💡 أسئلة سريعة للتجربة:")
+col1, col2 = st.columns(2)
+for idx, q_item in enumerate(EXAMPLE_QUESTIONS):
+    target_col = col1 if idx % 2 == 0 else col2
+    target_col.button(
+        q_item,
+        key=f"quick_q_{idx}",
+        use_container_width=True,
+        on_click=set_example_query,
+        args=(q_item,)
+    )
+
+st.divider()
+
+
+
 # ==========================================
 # 3. CHAT HISTORY MANAGEMENT
 # ==========================================
 # Initialize chat history if it doesn't exist
+
+
+
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -224,11 +267,31 @@ for msg in st.session_state.messages:
                     st.markdown(
                         f"**الكتاب:** {source['book_title']} | **حديث رقم:** {source['hadith_number']}\n\n{source['text']}")
                     st.divider()
+# أزرار أمثلة سريعة تظهر للزائر الجديد لتسهيل التجربة بضغطة واحدة
+# selected_example = None
+# if not st.session_state.messages:
+#     st.markdown("**💡 أمثلة سريعة للتجربة:**")
+#     col1, col2 = st.columns(2)
+#     with col1:
+#         if st.button("ما هي السبع الموبقات؟", use_container_width=True):
+#             selected_example = "ما هي السبع الموبقات؟"
+#         if st.button("ما هي شروط صلح الحديبية؟", use_container_width=True):
+#             selected_example = "ما هي شروط صلح الحديبية؟"
+#     with col2:
+#         if st.button("من الذين تخلفوا عن غزوة تبوك؟", use_container_width=True):
+#             selected_example = "من الذين تخلفوا عن غزوة تبوك؟"
+#         if st.button("كيف كان بدء الوحي إلى رسول الله ﷺ؟", use_container_width=True):
+#             selected_example = "كيف كان بدء الوحي إلى رسول الله ﷺ؟"
+#
 
 # ==========================================
 # 4. MAIN RAG PIPELINE & CHAT LOGIC
 # ==========================================
-user_query = st.chat_input("اكتب سؤالك هنا... (مثال: ماهي السبع الموبقات؟)")
+# user_query = st.chat_input("اكتب سؤالك هنا... (مثال: ماهي السبع الموبقات؟)")
+chat_input_query = st.chat_input("اكتب سؤالك هنا... (مثال: ماهي السبع الموبقات؟)")
+user_query = chat_input_query or st.session_state.pending_query
+st.session_state.pending_query = None
+
 
 if user_query:
     # 1. Show user message
@@ -334,7 +397,7 @@ if user_query:
 
             system_prompt = (
                 "، أنت باحث ومحقق علمي خبير في السنة النبوية والسيرة، متخصص في كتاب «التجريد الصريح لأحاديث الجامع الصحيح» (مختصر صحيح البخاري للإمام الزبيدي).\n"
-                "إذا أردت الإشارة وذكر الكتاب فقل هذا الاسم: مختصر صحيح البخاري للإمام الزبيدي واذكر اسم الكتاب كاملا في وقت الحاجة أو السؤال عنه فقط "
+                "وإذا أردت الإشارة وذكر الكتاب فقل هذا الاسم: مختصر صحيح البخاري واذكر اسم الكتاب كاملا في وقت الحاجة أو السؤال عنه فقط والأفضل دائما ذكر الإجابة كاملة فقط ثم ذكر المصادر في آخر الرد"
                 "مهمتك الإجابة عن سؤال المستخدم بدقة علمية وتاريخية صارمة، بالاعتماد **حصرياً** على نصوص الأحاديث المرفقة في السياق أدناه دون أي إضافة خارجية.\n\n"
 
                 "⚖️ الضوابط الشرعية والمنهجية الصارمة:\n"
