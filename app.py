@@ -10,25 +10,24 @@ import cohere
 # ==========================================
 # 1. PAGE CONFIGURATION & RTL STYLING
 # ==========================================
-st.set_page_config(page_title="الباحث في صحيح البخاري", page_icon="🕌", layout="centered")
-
+st.set_page_config(page_title="الباحث في صحيح البخاري", page_icon="🕌", layout="centered", initial_sidebar_state="collapsed")
 rtl_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
 
-    /* 1. Apply font globally BUT safely (Removed the aggressive * selector) */
+    /* 1. Apply Tajawal font globally and safely */
     html, body, p, div, h1, h2, h3, h4, h5, h6, li, a, textarea, input, button { 
         font-family: 'Tajawal', sans-serif !important; 
     }
 
-    /* 2. 🚨 PROTECT MATERIAL ICONS 🚨 */
+    /* 2. Protect Material Icons from font override & RTL flipping */
     .material-symbols-rounded, 
     [class*="material-symbols"], 
     [class*="material-icons"],
     svg, i {
         font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
         unicode-bidi: normal !important;
-        direction: ltr !important; /* Icons must remain LTR to prevent rendering bugs */
+        direction: ltr !important;
     }
 
     /* 3. General RTL Alignment */
@@ -40,43 +39,103 @@ rtl_css = """
         text-align: right !important;
     }
 
-    /* 4. Fix Arabic Lists */
+    /* Fix bracket & number flipping at the end of Arabic lines */
+    .stMarkdown p, .stMarkdown li {
+        unicode-bidi: isolate !important;
+        line-height: 1.75 !important;
+    }
+
+    /* 4. Fix Arabic Lists (Reduced excessive right margin/padding that squeezed mobile view) */
     .stMarkdown ol, .stMarkdown ul {
         direction: rtl !important;
         text-align: right !important;
-        padding-right: 2.5rem !important;
+        padding-right: 1.25rem !important;
         padding-left: 0 !important;
-        margin-right: 20px !important;
+        margin-right: 0.25rem !important;
         margin-left: 0 !important;
     }
+    .stMarkdown li {
+        margin-bottom: 0.35rem !important;
+    }
 
-    /* 5. Fix Expander (Accordion) Overlap */
+    /* 5. Fix Expander (Accordion) Full Width & Alignment */
+    div[data-testid="stExpander"] {
+        width: 100% !important;
+        direction: rtl !important;
+    }
     details summary {
         direction: rtl !important;
         text-align: right !important;
         display: flex !important;
         align-items: center !important;
+        gap: 8px !important;
     }
     details summary > span {
-        margin-left: 10px !important; /* Adds breathing room between the icon and text */
+        margin-left: 6px !important;
     }
-    /* Fix the typing cursor (caret) behaving weirdly in the chat input */
+
+    /* 6. Chat Input RTL & Disclaimer directly below the search bar */
     div[data-testid="stChatInput"] textarea {
         direction: rtl !important;
         text-align: right !important;
         caret-color: auto !important;
     }
-    
-    /* 6. إصلاح اتجاه الجداول (Markdown Tables) لتكون من اليمين لليسار بالكامل */
+
+    div[data-testid="stChatInput"]::after {
+        content: "⚠️ الذكاء الاصطناعي قد يخطئ في الاستنباط أو التلخيص؛ يظل نص الحديث الأصلي المرفق هو المرجع المعتمد.";
+        display: block;
+        text-align: center !important;
+        direction: rtl !important;
+        font-size: 0.74rem;
+        opacity: 0.72;
+        margin-top: 6px;
+        padding: 0 8px;
+        line-height: 1.4;
+    }
+
+    /* 7. Fix Markdown Tables RTL */
     .stMarkdown table, table {
         direction: rtl !important;
         width: 100% !important;
         border-collapse: collapse !important;
+        font-size: 0.92rem !important;
     }
     .stMarkdown th, .stMarkdown td, th, td {
         direction: rtl !important;
         text-align: right !important;
-        padding: 8px 12px !important;
+        padding: 8px 10px !important;
+    }
+
+    /* 8. 📱 Mobile Responsiveness Optimizations (< 768px) */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 1.8rem !important;
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+        h1 {
+            font-size: 1.5rem !important;
+            line-height: 1.35 !important;
+            margin-bottom: 0.25rem !important;
+        }
+        div[data-testid="stChatMessage"] {
+            padding: 0.65rem 0.5rem !important;
+            gap: 0.5rem !important;
+        }
+        .stMarkdown ol, .stMarkdown ul {
+            padding-right: 1rem !important;
+            margin-right: 0 !important;
+        }
+        div[data-testid="stChatInput"] textarea {
+            font-size: 0.9rem !important;
+        }
+        div[data-testid="stChatInput"] textarea::placeholder {
+            font-size: 0.82rem !important;
+        }
+        div[data-testid="stChatInput"]::after {
+            font-size: 0.68rem !important;
+            margin-top: 4px;
+        }
     }
 </style>
 """
@@ -89,7 +148,7 @@ st.markdown(rtl_css, unsafe_allow_html=True)
 with st.sidebar:
     st.title("عن التطبيق ℹ️")
     st.markdown("""
-    هذا التطبيق هو محرك بحث ذكي مخصص للبحث في **صحيح البخاري** باستخدام تقنيات توليد الاسترجاع المعزز (RAG).
+    هذا التطبيق هو محرك بحث ذكي مخصص للبحث في **مختصر صحيح البخاري للإمام الزبيدي** (التجريد الصريح لأحاديث الجامع الصحيح) باستخدام تقنيات الاسترجاع المعزز (RAG).
 
     **التقنيات المستخدمة:**
     - **واجهة المستخدم:** Streamlit
@@ -99,11 +158,12 @@ with st.sidebar:
 
     ---
     **⚠️ إخلاء مسؤولية:**
-    يعتمد هذا التطبيق على نماذج الذكاء الاصطناعي التي قد تخطئ أو تهلوس أحياناً في صياغة الشرح. النص العربي الأصلي للأحاديث المرفقة هو المرجع النهائي والوحيد.
+    يعتمد هذا التطبيق على نماذج الذكاء الاصطناعي التي قد تخطئ أحياناً في صياغة الشرح. النص العربي الأصلي للأحاديث المرفقة هو المرجع النهائي والوحيد..
     """)
 
 st.title("🕌 الباحث الذكي في صحيح البخاري")
-st.write("أهلاً بك. اطرح سؤالك وسيقوم النظام بالبحث في الأحاديث وتوليد إجابة دقيقة.")
+st.caption("أهلاً بك. اطرح سؤالك وسيقوم النظام بالبحث في الأحاديث النبوية وتوليد إجابة موثقة.")
+# st.write("أهلاً بك. اطرح سؤالك وسيقوم النظام بالبحث في الأحاديث وتوليد إجابة دقيقة.")
 
 # ==========================================
 # 2. LOAD ENVIRONMENT VARIABLES & MODELS
