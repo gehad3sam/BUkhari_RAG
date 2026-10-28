@@ -221,10 +221,10 @@ def set_example_query(q_text: str):
 
 # Showcase questions verified for 100% retrieval & generation accuracy
 EXAMPLE_QUESTIONS = [
-    "ما هي السبع الموبقات؟",
+    "كيف بدأ نزول الوحي على النبي ﷺ في غار حراء؟",
     "من هم السبعة الذين يظلهم الله في ظله؟",
     "ما هي علامات المنافق وخصاله؟",
-    "من الذين خاضوا في حادثة الإفك وتولوا كبره؟",
+    "ما فضل قيام ليلة القدر وصيام رمضان؟",
 ]
 
 # Render quick-start buttons ALWAYS at the top so visitors can test multiple questions seamlessly
