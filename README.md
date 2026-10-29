@@ -211,16 +211,21 @@ streamlit run app.py
 
 ---
 
-## 📁 هيكل ملفات المشروع (Project Structure)
+## 📂 هيكل ملفات المشروع (Project Structure)
 
 ```text
 BUkhari_RAG/
-├── app.py              # الكود الرئيسي لتطبيق Streamlit ومحرك الـ RAG
-├── requirements.txt    # الحزم والمكتبات البرمجية المطلوبة للتشغيل
-├── .gitignore          # استبعاد ملفات البيئة الافتراضية (.venv) ومفاتيح (.env)
-└── README.md           # دليل التوثيق وطريقة التشغيل
+├── .streamlit/
+│   └── config.toml          # إعدادات المظهر والواجهة وتخصيصات Streamlit
+├── src/
+│   ├── __init__.py          # تعريف مجلد src كحزمة برمجية (Python Package)
+│   ├── generator.py         # وحدة توليد الإجابات وضوابط الـ LLM (System Prompt & Gemini/Groq)
+│   └── retriever.py         # وحدة البحث المتجهي والفرز الدقيق (Qdrant & Cohere Reranker)
+├── .gitignore               # استبعاد ملفات البيئة الافتراضية (.venv) ومفاتيح الـ API (.env)
+├── README.md                # دليل التوثيق وطريقة التشغيل
+├── app.py                   # الكود الرئيسي للتطبيق وواجهة المستخدم (Streamlit UI)
+└── requirements.txt         # الحزم والمكتبات البرمجية المطلوبة للتشغيل
 ```
-
 ---
 
 ## ⚠️ إخلاء مسؤولية (Disclaimer)
